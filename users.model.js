@@ -1,3 +1,5 @@
+const axios = require("axios");
+
 const userDatabase = [
   {
     userId: "ad239f2f-3657-462c-8efa-798e4e810fd2",
@@ -18,7 +20,7 @@ const userDatabase = [
   },
 
   {
-    userId: "aa3dde7c-98ca-446e-aa70-315ffff14e4f",
+    userId: "9b796236-ad47-4f53-9009-09782384f969",
     registeredDevices: [
       { name: "iphone", playable: true },
       { name: "android", playable: true },
@@ -50,21 +52,92 @@ function fetchUser(userId) {
 
   return userInfo[0];
 }
+
 function fetchDevices(userId) {
-  // returns [Device]
-  return;
+  const user = fetchUser(userId);
+  const devices = user.registeredDevices;
+
+  return devices;
 }
-function signInUser(userId, device) {
-  // returns user
-  return;
+
+async function signInUser(userId, device) {
+  const user = fetchUser(userId);
+
+  const currentPlayableDevices = user.registeredDevices.filter(
+    (dev) => dev.playable === true
+  );
+
+  const maxDevices = await fetchMaxDevices(userId);
+
+  if (isDeviceRegistered(user.registeredDevices, device) === false) {
+    const playableFlag =
+      currentPlayableDevices.length < maxDevices ? true : false;
+
+    registerDevice(userId, device, playableFlag);
+
+    const userAccount = fetchUser(userId);
+
+    return userAccount;
+  } else {
+    if (currentPlayableDevices.length < maxDevices) {
+      updatePlayableFlag(userId, device, true);
+    }
+
+    const userAccount = fetchUser(userId);
+
+    return userAccount;
+  }
 }
+
+async function fetchMaxDevices(userId) {
+  const URL =
+    "https://growth-engineering-nodejs-home-assessement-dev.s3.eu-central-1.amazonaws.com/entitlements.json";
+  const { data } = await axios.get(URL);
+  const user = data.filter((user) => user.userId === userId);
+  const maxDevices = user[0].entitlements.devices.max_devices;
+
+  return maxDevices;
+}
+
+function isDeviceRegistered(userDevices, device) {
+  const matchedDevice = userDevices.filter((dev) => dev.name === device);
+
+  if (matchedDevice.length > 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function registerDevice(userId, device, flag) {
+  const newDevice = { name: device, playable: flag };
+  const userIndex = userDatabase.findIndex((obj) => obj.userId === userId);
+
+  userDatabase[userIndex].registeredDevices.push(newDevice);
+
+  return userDatabase[userIndex].registeredDevices;
+}
+
 function updatePlayableFlag(userId, device, flag) {
-  // returns one device
-  return;
+  const userIndex = userDatabase.findIndex((obj) => obj.userId === userId);
+  const deviceIndex = userDatabase[userIndex].registeredDevices.findIndex(
+    (obj) => obj.name === device
+  );
+
+  userDatabase[userIndex].registeredDevices[deviceIndex].playable = flag;
+
+  return userDatabase[userIndex].registeredDevices[deviceIndex];
 }
+
 function deleteDevice(userId, device) {
-  // returns [Device]
-  return;
+  const userIndex = userDatabase.findIndex((obj) => obj.userId === userId);
+  const deviceIndex = userDatabase[userIndex].registeredDevices.findIndex(
+    (obj) => obj.name === device
+  );
+
+  userDatabase[userIndex].registeredDevices.splice(deviceIndex, 1);
+
+  return userDatabase[userIndex].registeredDevices;
 }
 
 module.exports = {

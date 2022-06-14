@@ -1,6 +1,6 @@
 type Mutation {
   signInUser(userId: String!, device: String!): User
-  updatePlayableFlag(userId: String!, device: String!, flag: String!): Device
+  updatePlayableFlag(userId: String!, device: String!, flag: Boolean!): Device
   deleteDevice(userId: String!, device: String!): [Device]
 }
 
