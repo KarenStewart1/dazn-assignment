@@ -1,3 +1,4 @@
+const { ApolloError } = require("apollo-server-errors");
 const axios = require("axios");
 
 const userDatabase = [
@@ -28,7 +29,7 @@ const userDatabase = [
       { name: "windowsLaptop", playable: false },
       { name: "macbook", playable: false },
     ],
-    // MaxDevices: 3 (let's say)
+    // MaxDevices: 3
   },
 
   {
@@ -63,25 +64,15 @@ function fetchDevices(userId) {
 async function signInUser(userId, device) {
   const user = fetchUser(userId);
 
-  const currentPlayableDevices = user.registeredDevices.filter(
-    (dev) => dev.playable === true
-  );
-
-  const maxDevices = await fetchMaxDevices(userId);
-
   if (isDeviceRegistered(user.registeredDevices, device) === false) {
-    const playableFlag =
-      currentPlayableDevices.length < maxDevices ? true : false;
-
-    registerDevice(userId, device, playableFlag);
+    const maxReached = await isMaxDevicesReached(userId);
+    registerDevice(userId, device, maxReached ? false : true);
 
     const userAccount = fetchUser(userId);
 
     return userAccount;
   } else {
-    if (currentPlayableDevices.length < maxDevices) {
-      updatePlayableFlag(userId, device, true);
-    }
+    updatePlayableFlag(userId, device, true);
 
     const userAccount = fetchUser(userId);
 
@@ -111,6 +102,7 @@ function isDeviceRegistered(userDevices, device) {
 
 function registerDevice(userId, device, flag) {
   const newDevice = { name: device, playable: flag };
+
   const userIndex = userDatabase.findIndex((obj) => obj.userId === userId);
 
   userDatabase[userIndex].registeredDevices.push(newDevice);
@@ -118,14 +110,41 @@ function registerDevice(userId, device, flag) {
   return userDatabase[userIndex].registeredDevices;
 }
 
-function updatePlayableFlag(userId, device, flag) {
+async function isMaxDevicesReached(userId) {
+  const user = fetchUser(userId);
+  const currentPlayableDevices = user.registeredDevices.filter(
+    (dev) => dev.playable === true
+  );
+
+  const maxDevices = await fetchMaxDevices(userId);
+
+  if (currentPlayableDevices.length < maxDevices) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+async function updatePlayableFlag(userId, device, flag) {
+  const isMaxReached = await isMaxDevicesReached(userId);
   const userIndex = userDatabase.findIndex((obj) => obj.userId === userId);
   const deviceIndex = userDatabase[userIndex].registeredDevices.findIndex(
     (obj) => obj.name === device
   );
 
-  userDatabase[userIndex].registeredDevices[deviceIndex].playable = flag;
-
+  if (
+    userDatabase[userIndex].registeredDevices[deviceIndex].playable === flag
+  ) {
+    return;
+  }
+  if (flag && isMaxReached) {
+    throw new ApolloError(
+      "Maximum limit of playable devices reached",
+      "MAX_LIMIT_PLAYABLE_DEVICES_REACHED"
+    );
+  } else {
+    userDatabase[userIndex].registeredDevices[deviceIndex].playable = flag;
+  }
   return userDatabase[userIndex].registeredDevices[deviceIndex];
 }
 
