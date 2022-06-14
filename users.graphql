@@ -1,0 +1,20 @@
+type Mutation {
+  signInUser(userId: String!, device: String!): User
+  updatePlayableFlag(userId: String!, device: String!, flag: String!): Device
+  deleteDevice(userId: String!, device: String!): [Device]
+}
+
+type Query {
+  fetchUser(userId: String!): User
+  fetchDevices(userId: String!): [Device]
+}
+
+type User {
+  userId: String!
+  registeredDevices: [Device]
+}
+
+type Device {
+  name: String!
+  playable: Boolean!
+}
